@@ -12,6 +12,7 @@ import numpy as np
 from PreResNet import *
 from sklearn.mixture import GaussianMixture
 import dataloader_cifar as dataloader
+import wandb
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR Training')
 parser.add_argument('--batch_size', default=64, type=int, help='train batchsize') 
@@ -29,12 +30,18 @@ parser.add_argument('--gpuid', default=0, type=int)
 parser.add_argument('--num_class', default=10, type=int)
 parser.add_argument('--data_path', default='./cifar-10', type=str, help='path to dataset')
 parser.add_argument('--dataset', default='cifar10', type=str)
+parser.add_argument('--expt_name', type=str)
+parser.add_argument('--project', default='MLO-LabelNoise', type=str)
+parser.add_argument('--entity', default='morales97', type=str)
+
 args = parser.parse_args()
 
 torch.cuda.set_device(args.gpuid)
 random.seed(args.seed)
 torch.manual_seed(args.seed)
 torch.cuda.manual_seed_all(args.seed)
+
+wandb.init(name=args.expt_name, config=args, project=args.project, entity=args.entity)
 
 
 # Training
@@ -115,10 +122,18 @@ def train(epoch,net,net2,optimizer,labeled_trainloader,unlabeled_trainloader):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+
         
         sys.stdout.write('\r')
         sys.stdout.write('%s:%.1f-%s | Epoch [%3d/%3d] Iter[%3d/%3d]\t Labeled loss: %.2f  Unlabeled loss: %.2f'
                 %(args.dataset, args.r, args.noise_mode, epoch, args.num_epochs, batch_idx+1, num_iter, Lx.item(), Lu.item()))
+        wandb.log({
+            'Epoch': epoch,
+            'Iteration': epoch * num_iter + batch_idx+1,
+            'Labeled Loss': Lx.item(),
+            'Unlabeled loss': Lu.item(),
+            'Train Total loss': loss.item()
+        })
         sys.stdout.flush()
 
 def warmup(epoch,net,optimizer,dataloader):
@@ -140,6 +155,11 @@ def warmup(epoch,net,optimizer,dataloader):
         sys.stdout.write('\r')
         sys.stdout.write('%s:%.1f-%s | Epoch [%3d/%3d] Iter[%3d/%3d]\t CE-loss: %.4f'
                 %(args.dataset, args.r, args.noise_mode, epoch, args.num_epochs, batch_idx+1, num_iter, loss.item()))
+        wandb.log({
+            'Epoch': epoch,
+            'Iteration': epoch * num_iter + batch_idx+1,
+            'Train Total loss': loss.item()
+        })
         sys.stdout.flush()
 
 def test(epoch,net1,net2):
@@ -160,6 +180,7 @@ def test(epoch,net1,net2):
     acc = 100.*correct/total
     print("\n| Test Epoch #%d\t Accuracy: %.2f%%\n" %(epoch,acc))  
     test_log.write('Epoch:%d   Accuracy:%.2f\n'%(epoch,acc))
+    wandb.log({'Epoch': epoch, 'Test Accuracy': acc})
     test_log.flush()  
 
 def eval_train(model,all_loss):    
@@ -211,6 +232,8 @@ def create_model():
     model = ResNet18(num_classes=args.num_class)
     model = model.cuda()
     return model
+
+ 
 
 stats_log=open('./checkpoint/%s_%.1f_%s'%(args.dataset,args.r,args.noise_mode)+'_stats.txt','w') 
 test_log=open('./checkpoint/%s_%.1f_%s'%(args.dataset,args.r,args.noise_mode)+'_acc.txt','w')     
@@ -275,3 +298,6 @@ for epoch in range(args.num_epochs+1):
     test(epoch,net1,net2)  
 
 
+wandb.finish()
+
+# python Train_cifar.py --data_path /mloraw1/danmoral/data/cifar-100-python
