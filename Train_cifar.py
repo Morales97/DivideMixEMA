@@ -20,6 +20,7 @@ parser.add_argument('--batch_size', default=64, type=int, help='train batchsize'
 parser.add_argument('--lr', '--learning_rate', default=0.02, type=float, help='initial learning rate')
 parser.add_argument('--noise_mode',  default='sym')
 parser.add_argument('--alpha', default=4, type=float, help='parameter for Beta')
+parser.add_argument('--ema_alpha', default=0.999, type=float, help='parameter for Beta')
 parser.add_argument('--lambda_u', default=25, type=float, help='weight for unsupervised loss')
 parser.add_argument('--p_threshold', default=0.5, type=float, help='clean probability threshold')
 parser.add_argument('--T', default=0.5, type=float, help='sharpening temperature')
@@ -288,8 +289,8 @@ for epoch in range(args.num_epochs+1):
     eval_loader = loader.run('eval_train')   
     
     if epoch == warm_up:    # init EMA
-        ema_model_1, ema_opt_1 = create_ema_model(net1, args.alpha)
-        ema_model_2, ema_opt_2 = create_ema_model(net2, args.alpha)
+        ema_model_1, ema_opt_1 = create_ema_model(net1, args.ema_alpha)
+        ema_model_2, ema_opt_2 = create_ema_model(net2, args.ema_alpha)
 
     if epoch<warm_up:       
         warmup_trainloader = loader.run('warmup')
