@@ -13,6 +13,7 @@ from PreResNet import *
 from sklearn.mixture import GaussianMixture
 import dataloader_cifar as dataloader
 import wandb
+from ema import OptimizerEMA
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR Training')
 parser.add_argument('--batch_size', default=64, type=int, help='train batchsize') 
@@ -45,7 +46,7 @@ wandb.init(name=args.expt_name, config=args, project=args.project, entity=args.e
 
 
 # Training
-def train(epoch,net,net2,optimizer,labeled_trainloader,unlabeled_trainloader):
+def train(epoch,net,net2,optimizer,ema_opt,labeled_trainloader,unlabeled_trainloader):
     net.train()
     net2.eval() #fix one network and train the other
     
@@ -122,7 +123,7 @@ def train(epoch,net,net2,optimizer,labeled_trainloader,unlabeled_trainloader):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-
+        ema_opt.update()
         
         sys.stdout.write('\r')
         sys.stdout.write('%s:%.1f-%s | Epoch [%3d/%3d] Iter[%3d/%3d]\t Labeled loss: %.2f  Unlabeled loss: %.2f'
@@ -162,7 +163,7 @@ def warmup(epoch,net,optimizer,dataloader):
         })
         sys.stdout.flush()
 
-def test(epoch,net1,net2):
+def test(epoch,net1,net2, ema=False):
     net1.eval()
     net2.eval()
     correct = 0
@@ -178,9 +179,14 @@ def test(epoch,net1,net2):
             total += targets.size(0)
             correct += predicted.eq(targets).cpu().sum().item()                 
     acc = 100.*correct/total
-    print("\n| Test Epoch #%d\t Accuracy: %.2f%%\n" %(epoch,acc))  
-    test_log.write('Epoch:%d   Accuracy:%.2f\n'%(epoch,acc))
-    wandb.log({'Epoch': epoch, 'Test Accuracy': acc})
+    if not ema:
+        print("\n| Test Epoch #%d\t Accuracy: %.2f%%\n" %(epoch,acc))  
+        test_log.write('Epoch:%d   Accuracy:%.2f\n'%(epoch,acc))
+        wandb.log({'Epoch': epoch, 'Test Accuracy': acc})
+    else:
+        print("\n| Test Epoch #%d\t EMA Accuracy: %.2f%%\n" %(epoch,acc))  
+        test_log.write('Epoch:%d   EMA Accuracy:%.2f\n'%(epoch,acc))
+        wandb.log({'Epoch': epoch, 'EMA Test Accuracy': acc})    
     test_log.flush()  
 
 def eval_train(model,all_loss):    
@@ -233,7 +239,15 @@ def create_model():
     model = model.cuda()
     return model
 
- 
+# DM
+def create_ema_model(net, alpha):
+    ema_model = ResNet18(num_classes=args.num_class)
+    ema_model = ema_model.cuda()
+    ema_model.load_state_dict(net.state_dict())
+    for param in ema_model.parameters():
+        param.detach_()
+    ema_opt = OptimizerEMA(net, ema_model, alpha=alpha, ramp_up=False)
+    return ema_model, ema_opt
 
 stats_log=open('./checkpoint/%s_%.1f_%s'%(args.dataset,args.r,args.noise_mode)+'_stats.txt','w') 
 test_log=open('./checkpoint/%s_%.1f_%s'%(args.dataset,args.r,args.noise_mode)+'_acc.txt','w')     
@@ -241,7 +255,7 @@ test_log=open('./checkpoint/%s_%.1f_%s'%(args.dataset,args.r,args.noise_mode)+'_
 if args.dataset=='cifar10':
     warm_up = 10
 elif args.dataset=='cifar100':
-    warm_up = 30
+    warm_up = 2
 
 loader = dataloader.cifar_dataloader(args.dataset,r=args.r,noise_mode=args.noise_mode,batch_size=args.batch_size,num_workers=5,\
     root_dir=args.data_path,log=stats_log,noise_file='%s/%.1f_%s.json'%(args.data_path,args.r,args.noise_mode))
@@ -273,6 +287,10 @@ for epoch in range(args.num_epochs+1):
     test_loader = loader.run('test')
     eval_loader = loader.run('eval_train')   
     
+    if epoch == warm_up:    # init EMA
+        ema_model_1, ema_opt_1 = create_ema_model(net1, args.alpha)
+        ema_model_2, ema_opt_2 = create_ema_model(net2, args.alpha)
+
     if epoch<warm_up:       
         warmup_trainloader = loader.run('warmup')
         print('Warmup Net1')
@@ -289,15 +307,16 @@ for epoch in range(args.num_epochs+1):
         
         print('Train Net1')
         labeled_trainloader, unlabeled_trainloader = loader.run('train',pred2,prob2) # co-divide
-        train(epoch,net1,net2,optimizer1,labeled_trainloader, unlabeled_trainloader) # train net1  
+        train(epoch,net1,net2,optimizer1,ema_opt_1,labeled_trainloader, unlabeled_trainloader) # train net1  
         
         print('\nTrain Net2')
         labeled_trainloader, unlabeled_trainloader = loader.run('train',pred1,prob1) # co-divide
-        train(epoch,net2,net1,optimizer2,labeled_trainloader, unlabeled_trainloader) # train net2         
+        train(epoch,net2,net1,optimizer2,ema_opt_2,labeled_trainloader, unlabeled_trainloader) # train net2         
 
     test(epoch,net1,net2)  
+    test(epoch, ema_model_1, ema_model_2, ema=True)  
 
 
 wandb.finish()
 
-# python Train_cifar.py --data_path /mloraw1/danmoral/data/cifar-100-python --dataset=cifar100
+# python Train_cifar.py --data_path /mloraw1/danmoral/data/cifar-100-python --dataset=cifar100 --num_class=100
