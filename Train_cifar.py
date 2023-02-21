@@ -256,7 +256,7 @@ test_log=open('./checkpoint/%s_%.1f_%s'%(args.dataset,args.r,args.noise_mode)+'_
 if args.dataset=='cifar10':
     warm_up = 10
 elif args.dataset=='cifar100':
-    warm_up = 2
+    warm_up = 1
 
 loader = dataloader.cifar_dataloader(args.dataset,r=args.r,noise_mode=args.noise_mode,batch_size=args.batch_size,num_workers=5,\
     root_dir=args.data_path,log=stats_log,noise_file='%s/%.1f_%s.json'%(args.data_path,args.r,args.noise_mode))
@@ -315,7 +315,8 @@ for epoch in range(args.num_epochs+1):
         train(epoch,net2,net1,optimizer2,ema_opt_2,labeled_trainloader, unlabeled_trainloader) # train net2         
 
     test(epoch,net1,net2)  
-    test(epoch, ema_model_1, ema_model_2, ema=True)  
+    if epoch >= warm_up:
+        test(epoch, ema_model_1, ema_model_2, ema=True)  
 
 
 wandb.finish()
