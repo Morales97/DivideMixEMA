@@ -53,9 +53,14 @@ class cifar_dataset(Dataset):
             train_data = train_data.reshape((50000, 3, 32, 32))
             train_data = train_data.transpose((0, 2, 3, 1))
 
-            if os.path.exists(noise_file):
-                noise_label = json.load(open(noise_file,"r"))
+            # if os.path.exists(noise_file):
+            if os.path.exists(os.path.join(root_dir, '/CIFAR-100_human.pt')):
+                # noise_label = json.load(open(noise_file,"r"))
+                print('Noise File found!')
+                noise_label = torch.load(os.path.join(root_dir, '/CIFAR-100_human.pt')) # DM: use same 40% noise as in our expts
+                noisy_label = noise_label['noisy_label'] 
             else:    #inject noise   
+                print('Noise file not found, generating noisy labels...')
                 noise_label = []
                 idx = list(range(50000))
                 random.shuffle(idx)

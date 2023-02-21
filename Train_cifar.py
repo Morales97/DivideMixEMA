@@ -300,4 +300,4 @@ for epoch in range(args.num_epochs+1):
 
 wandb.finish()
 
-# python Train_cifar.py --data_path /mloraw1/danmoral/data/cifar-100-python
+# python Train_cifar.py --data_path /mloraw1/danmoral/data/cifar-100-python --dataset=cifar100
