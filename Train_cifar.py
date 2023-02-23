@@ -300,9 +300,11 @@ for epoch in range(args.num_epochs+1):
         warmup(epoch,net2,optimizer2,warmup_trainloader) 
    
     else:         
-        prob1,all_loss[0]=eval_train(net1,all_loss[0])   
-        prob2,all_loss[1]=eval_train(net2,all_loss[1])          
-               
+        # prob1,all_loss[0]=eval_train(net1,all_loss[0])   
+        # prob2,all_loss[1]=eval_train(net2,all_loss[1])          
+        prob1,all_loss[0]=eval_train(ema_model_1,all_loss[0])       # DM: trying to use EMA (more robust) to increase performance
+        prob2,all_loss[1]=eval_train(ema_model_2,all_loss[1]) 
+
         pred1 = (prob1 > args.p_threshold)      
         pred2 = (prob2 > args.p_threshold)      
         
