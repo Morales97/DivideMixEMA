@@ -159,8 +159,11 @@ class ResNet(nn.Module):
         return out
 
 
-def ResNet18(num_classes=10):
-    return ResNet(PreActBlock, [2,2,2,2], num_classes=num_classes)
+def ResNet18(num_classes=10, preact=True):
+    if preact:
+        return ResNet(PreActBlock, [2,2,2,2], num_classes=num_classes)
+    else:
+        return ResNet(BasicBlock, [2,2,2,2], num_classes=num_classes)
 
 def ResNet34(num_classes=10):
     return ResNet(BasicBlock, [3,4,6,3], num_classes=num_classes)

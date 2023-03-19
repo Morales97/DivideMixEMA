@@ -35,6 +35,7 @@ parser.add_argument('--dataset', default='cifar10', type=str)
 parser.add_argument('--expt_name', type=str)
 parser.add_argument('--project', default='MLO-LabelNoise', type=str)
 parser.add_argument('--entity', default='morales97', type=str)
+parser.add_argument('--net', default='preact_rn18', type=str)
 
 args = parser.parse_args()
 
@@ -236,14 +237,19 @@ class NegEntropy(object):
         return torch.mean(torch.sum(probs.log()*probs, dim=1))
 
 def create_model():
-    model = ResNet18(num_classes=args.num_class)
+    if args.net == 'rn18':
+        model = ResNet18(num_classes=args.num_class, preact=False)   
+    else:
+        model = ResNet18(num_classes=args.num_class, preact=True)  # NOTE default DivideMix implementation
     model = model.cuda()
     return model
 
 # DM
 def create_ema_model(net, alpha):
-    ema_model = ResNet18(num_classes=args.num_class)
-    ema_model = ema_model.cuda()
+    if args.net == 'rn18':
+        ema_model = ResNet18(num_classes=args.num_class, preact=False)   
+    else:
+        ema_model = ResNet18(num_classes=args.num_class, preact=True)  # NOTE default DivideMix implementation    ema_model = ema_model.cuda()
     ema_model.load_state_dict(net.state_dict())
     for param in ema_model.parameters():
         param.detach_()
