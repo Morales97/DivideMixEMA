@@ -249,7 +249,8 @@ def create_ema_model(net, alpha):
     if args.net == 'rn18':
         ema_model = ResNet18(num_classes=args.num_class, preact=False)   
     else:
-        ema_model = ResNet18(num_classes=args.num_class, preact=True)  # NOTE default DivideMix implementation    ema_model = ema_model.cuda()
+        ema_model = ResNet18(num_classes=args.num_class, preact=True)  # NOTE default DivideMix implementation    
+    ema_model = ema_model.cuda()
     ema_model.load_state_dict(net.state_dict())
     for param in ema_model.parameters():
         param.detach_()
