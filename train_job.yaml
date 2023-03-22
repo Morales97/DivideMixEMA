@@ -30,7 +30,7 @@ spec:
         command: ["/bin/bash"]
         args:
         - "-c"
-        - "git pull && python Train_cifar.py --data_path /mloraw1/danmoral/data/cifar-100-python --dataset=cifar100 --net=rn18 --num_class=100 --lr=0.02 --expt_name=RN18"
+        - "python Train_cifar.py --data_path /mloraw1/danmoral/data/cifar-100-python --dataset=cifar100 --net=rn34 --num_class=100 --lr=0.02 --expt_name=RN34"
 
         resources:
           limits:

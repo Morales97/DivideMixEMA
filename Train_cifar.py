@@ -238,7 +238,9 @@ class NegEntropy(object):
 
 def create_model():
     if args.net == 'rn18':
-        model = ResNet18(num_classes=args.num_class, preact=False)   
+        model = ResNet18(num_classes=args.num_class, preact=False)  
+    elif args.net == 'rn34':
+        model = ResNet34(num_classes=args.num_class) 
     else:
         model = ResNet18(num_classes=args.num_class, preact=True)  # NOTE default DivideMix implementation
     model = model.cuda()
@@ -248,6 +250,8 @@ def create_model():
 def create_ema_model(net, alpha):
     if args.net == 'rn18':
         ema_model = ResNet18(num_classes=args.num_class, preact=False)   
+    elif args.net == 'rn34':
+        ema_model = ResNet34(num_classes=args.num_class)
     else:
         ema_model = ResNet18(num_classes=args.num_class, preact=True)  # NOTE default DivideMix implementation    
     ema_model = ema_model.cuda()
