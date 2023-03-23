@@ -25,7 +25,7 @@ parser.add_argument('--lambda_u', default=25, type=float, help='weight for unsup
 parser.add_argument('--p_threshold', default=0.5, type=float, help='clean probability threshold')
 parser.add_argument('--T', default=0.5, type=float, help='sharpening temperature')
 parser.add_argument('--num_epochs', default=300, type=int)
-parser.add_argument('--r', default=0.5, type=float, help='noise ratio')
+parser.add_argument('--r', default=0.4, type=float, help='noise ratio')
 parser.add_argument('--id', default='')
 parser.add_argument('--seed', default=123)
 parser.add_argument('--gpuid', default=0, type=int)
@@ -331,6 +331,13 @@ for epoch in range(args.num_epochs+1):
     if epoch >= warm_up:
         test(epoch, ema_model_1, ema_model_2, ema=True)  
 
+# DM save last models
+state = {
+    'net': args.net,
+    'state_dict_1': net1.state_dict(),
+    'state_dict_2': net2.state_dict()
+}
+torch.save(state, os.path.join('/mloraw1/danmoral/DivideMix_ckpts/', f'checkpoint_{args.net}_{args.r}_s{args.seed}.pth.tar'))    
 
 wandb.finish()
 

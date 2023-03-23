@@ -56,9 +56,14 @@ class cifar_dataset(Dataset):
             # if os.path.exists(noise_file):
             if os.path.exists(os.path.join(root_dir, 'CIFAR-100_human.pt')):
                 # noise_label = json.load(open(noise_file,"r"))
-                print('Noise File found!')
+                print(f'Noise File found! Using asymmetric label noise of {self.r*100}%')
                 noise_label = torch.load(os.path.join(root_dir, 'CIFAR-100_human.pt')) # DM: use same 40% noise as in our expts
-                noise_label = noise_label['noisy_label'] 
+                if self.r == 0.4:
+                    noise_label = noise_label['noisy_label'] 
+                else:
+                    assert self.r < 0.4
+                    n_noise_labels = int(50000 * self.r / 0.4)    # take a fraction of the 40% noisy
+                    noise_label = np.concatenate((noise_label['noisy_label'][:n_noise_labels], noise_label['clean_label'][n_noise_labels:]), axis=0) 
             else:    #inject noise   
                 print('Noise file not found, generating noisy labels...')
                 noise_label = []
